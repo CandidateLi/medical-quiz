@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>临床题库 - 在线分享版</title>
+    <title>临床题库 - 纠错反馈版</title>
     <style>
         /* --- 1. 核心配色 --- */
         :root {
             --primary: #4a90e2; 
             --success: #27ae60; 
             --error: #e74c3c;
+            --warning: #f39c12;
             --bg: #f5f7fa;
             --card-bg: #ffffff;
             --text: #2c3e50;
@@ -40,7 +41,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         /* =========================================
-           2. 书架/目录视图
+           2. 列表视图 (书架 & 反馈)
            ========================================= */
         .library-header {
             display: flex;
@@ -48,6 +49,27 @@
             align-items: center;
             margin-bottom: 20px;
             padding: 0 5px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .nav-item {
+            cursor: pointer;
+            font-weight: 600;
+            color: #999;
+            padding: 5px 10px;
+            position: relative;
+        }
+        .nav-item.active { color: var(--primary); }
+        .nav-item.active::after {
+            content: ''; position: absolute; bottom: -12px; left: 0; width: 100%; height: 2px; background: var(--primary);
         }
 
         .section-title {
@@ -59,11 +81,7 @@
             font-weight: 700;
         }
 
-        .exam-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px; 
-        }
+        .exam-list { display: flex; flex-direction: column; gap: 12px; }
 
         .exam-item {
             background: var(--card-bg);
@@ -76,47 +94,21 @@
             align-items: center;
             transition: all 0.2s;
         }
+        .exam-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateX(2px); }
 
-        .exam-item:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            transform: translateX(2px);
-        }
-
-        .exam-info-group {
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-            flex: 1; 
-        }
-
-        .exam-title {
-            font-size: 1.05rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .badge-online {
-            background: #e1f5fe; color: #0288d1; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #b3e5fc;
-        }
-
+        .exam-info-group { display: flex; flex-direction: column; cursor: pointer; flex: 1; }
+        .exam-title { font-size: 1.05rem; font-weight: 600; color: #333; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+        .badge-online { background: #e1f5fe; color: #0288d1; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #b3e5fc; }
+        .badge-feedback { background: #fff3cd; color: #856404; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffeeba; }
         .exam-sub { font-size: 0.85rem; color: #888; }
-
         .exam-actions { display: flex; align-items: center; gap: 8px; }
 
-        .btn-icon {
-            background: transparent; border: 1px solid #eee; border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; color: #666; transition: all 0.2s;
-        }
+        .btn-icon { background: transparent; border: 1px solid #eee; border-radius: 6px; padding: 6px 10px; font-size: 0.85rem; cursor: pointer; color: #666; transition: all 0.2s; }
         .btn-icon:hover { background: #f0f0f0; color: var(--primary); }
         .btn-import { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
 
         /* 加载动画 */
-        .spinner {
-            border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto; display: none;
-        }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* =========================================
@@ -145,27 +137,36 @@
         .analysis { margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid var(--primary); border-radius: 4px; font-size: 0.95rem; display: none; animation: fadeIn 0.3s ease; line-height: 1.6; }
         
         .fab-stats { position: fixed; bottom: 30px; right: 30px; background: white; padding: 10px 20px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); font-weight: bold; font-size: 0.9rem; color: var(--primary); border: 1px solid #eee; z-index: 200; display: none; }
-        .edit-btn { position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: #ccc; cursor: pointer; font-size: 1.1rem; padding: 5px; }
-        .edit-btn:hover { color: var(--primary); }
+        
+        /* 按钮组 */
+        .card-actions { position: absolute; top: 20px; right: 20px; display: flex; gap: 8px; }
+        .action-btn { background: #fff; border: 1px solid #eee; color: #999; cursor: pointer; font-size: 0.9rem; padding: 4px 10px; border-radius: 4px; transition: all 0.2s;}
+        .action-btn:hover { border-color: var(--primary); color: var(--primary); background: #f0f7ff; }
+        .btn-report { color: var(--warning); border-color: #ffeeba; }
+        .btn-report:hover { color: #856404; background: #fff3cd; border-color: #ffeeba; }
 
         /* 弹窗 */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal { background: #fff; padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .form-label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; color: #555; }
-        .form-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 15px; font-family: inherit; box-sizing: border-box; }
+        .modal { background: #fff; padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;}
+        .form-label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9rem; color: #555; margin-top: 15px; }
+        .form-label:first-child { margin-top: 0; }
+        .form-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; box-sizing: border-box; }
         textarea.form-input { resize: vertical; min-height: 80px; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;}
         .btn-save { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
         .btn-cancel { background: #f0f0f0; color: #333; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        .btn-mail { background: var(--success); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        
         #fileInput { display: none; }
+        .tip-text { font-size: 0.8rem; color: #888; margin-top: 4px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     
-    <!-- 视图1：书架 -->
-    <div id="view-library" class="view-section active-view">
+    <!-- 视图1：首页 (含题库和意见栏) -->
+    <div id="view-home" class="view-section active-view">
         <div class="library-header">
             <h1 style="margin:0; font-size:1.4rem;">📚 题库中心</h1>
             <button class="btn-import" onclick="document.getElementById('fileInput').click()">
@@ -174,26 +175,44 @@
             <input type="file" id="fileInput" accept=".json" onchange="importFile(this)">
         </div>
 
-        <!-- 在线题库区域 -->
-        <div id="section-online" style="display:none;">
-            <div class="section-title">☁️ 在线题库 </div>
-            <div id="online-list" class="exam-list">
-                <div id="online-loading" style="text-align:center; color:#999; padding:20px;">
-                    <div class="spinner" style="display:inline-block; vertical-align:middle;"></div> 加载中...
-                </div>
-            </div>
+        <!-- 导航标签 -->
+        <div class="nav-tabs">
+            <div class="nav-item active" id="tab-library" onclick="switchTab('library')">我的题库</div>
+            <div class="nav-item" id="tab-feedback" onclick="switchTab('feedback')">📋 意见/纠错记录</div>
         </div>
 
-        <!-- 本地题库区域 -->
-        <div class="section-title">📂 本地导入</div>
-        <div id="library-list" class="exam-list"></div>
-        <div id="empty-tip" style="text-align:center; color:#999; margin-top:20px; display:none;">本地没有题库，请导入或从云端下载</div>
+        <!-- 子视图：题库列表 -->
+        <div id="subview-library">
+            <div id="section-online" style="display:none;">
+                <div class="section-title">☁️ 在线题库</div>
+                <div id="online-list" class="exam-list">
+                    <div id="online-loading" style="text-align:center; color:#999; padding:20px;">
+                        <div class="spinner" style="display:inline-block; vertical-align:middle;"></div> 加载中...
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">📂 本地存储</div>
+            <div id="library-list" class="exam-list"></div>
+            <div id="empty-tip" style="text-align:center; color:#999; margin-top:20px; display:none;">本地没有题库</div>
+        </div>
+
+        <!-- 子视图：意见栏 -->
+        <div id="subview-feedback" style="display:none;">
+            <div id="feedback-list" class="exam-list"></div>
+            <div id="feedback-empty" style="text-align:center; color:#999; margin-top:30px;">
+                暂无反馈记录。<br>做题时遇到错误，点击“📢 纠错”按钮即可上报。
+            </div>
+            <div style="margin-top:20px; font-size:0.8rem; color:#aaa; text-align:center;">
+                提示：此处仅显示您提交的反馈。建议定期点击“邮件发送”告知管理员。
+            </div>
+        </div>
     </div>
 
     <!-- 视图2：做题 -->
     <div id="view-quiz" class="view-section">
         <header class="quiz-header">
-            <button class="btn-back" onclick="switchView('library')">⬅ 列表</button>
+            <button class="btn-back" onclick="switchView('home')">⬅ 返回</button>
             <h1 id="quiz-title" style="font-size: 1rem; margin:0;"></h1>
             <div style="width: 60px;"></div>
         </header>
@@ -221,17 +240,17 @@
     </div>
 </div>
 
-<!-- 弹窗：编辑题目 -->
+<!-- 弹窗：编辑题目 (本地) -->
 <div id="modal-edit" class="modal-overlay">
     <div class="modal">
-        <h3 style="margin-top:0;">✏️ 编辑题目</h3>
+        <h3 style="margin-top:0;">✏️ 编辑本地题目</h3>
         <label class="form-label">题目内容</label>
         <textarea id="edit-q-text" class="form-input"></textarea>
         <div id="edit-options-group">
             <label class="form-label">选项 (一行一个)</label>
-            <textarea id="edit-q-options" class="form-input" placeholder="A. 选项1&#10;B. 选项2"></textarea>
+            <textarea id="edit-q-options" class="form-input"></textarea>
         </div>
-        <label class="form-label">答案 (单选填 0/1/2，填空直接写字)</label>
+        <label class="form-label">答案</label>
         <input type="text" id="edit-q-answer" class="form-input">
         <label class="form-label">解析</label>
         <textarea id="edit-q-note" class="form-input"></textarea>
@@ -242,137 +261,231 @@
     </div>
 </div>
 
+<!-- 弹窗：纠错反馈 (在线) -->
+<div id="modal-report" class="modal-overlay">
+    <div class="modal">
+        <h3 style="margin-top:0;">📢 意见反馈 / 纠错</h3>
+        <p style="font-size:0.85rem; color:#666; margin-bottom:15px;">
+            请填写您的意见，保存后可生成邮件发送给管理员。
+        </p>
+
+        <label class="form-label">当前题目 (自动填充)</label>
+        <div id="report-q-preview" style="background:#f9f9f9; padding:10px; border-radius:4px; font-size:0.85rem; color:#555; max-height:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+
+        <label class="form-label">您的意见/建议</label>
+        <textarea id="report-content" class="form-input" placeholder="例如：答案应该是C，因为... 解析解释有误..."></textarea>
+
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeModal('modal-report')">取消</button>
+            <button class="btn-save" onclick="saveReport()">💾 仅保存到意见栏</button>
+            <button class="btn-mail" onclick="saveAndMailReport()">📧 保存并发送</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // --- 核心配置 ---
-    // 这个 index.json 文件决定了云端有哪些题库
+    // ★★★ 请在这里配置你的邮箱，以便接收用户的反馈 ★★★
+    const ADMIN_EMAIL = "3182568199@qq.com"; 
     const REPO_INDEX_URL = 'repo_index.json'; 
 
-    // --- 数据存储 ---
-    let localLibrary = [];  // 本地试卷
-    let onlineLibrary = []; // 在线试卷列表
-    let currentExamData = null; // 当前正在做的题目数据
-    let currentExamType = 'local'; // 'local' or 'online'
+    let localLibrary = [];  
+    let onlineLibrary = []; 
+    let feedbackList = []; // 意见列表
+
+    let currentExamData = null;
+    let currentExamType = 'local';
     let currentExamId = null; 
     let currentEditIndex = null;
     let stats = { done: 0, correct: 0 };
 
     window.onload = () => {
-        // 加载本地
+        // 加载数据
         const savedLib = localStorage.getItem('medQuizLibrary_Pro');
         if (savedLib) localLibrary = JSON.parse(savedLib);
-        renderLocalLibrary();
         
-        // 加载云端
+        const savedFeedback = localStorage.getItem('medQuizFeedback');
+        if (savedFeedback) feedbackList = JSON.parse(savedFeedback);
+
+        renderLocalLibrary();
+        renderFeedbackList();
         fetchOnlineLibrary();
     };
 
-    function saveLocalLibrary() {
-        localStorage.setItem('medQuizLibrary_Pro', JSON.stringify(localLibrary));
+    function saveLocalLibrary() { localStorage.setItem('medQuizLibrary_Pro', JSON.stringify(localLibrary)); }
+    function saveFeedback() { localStorage.setItem('medQuizFeedback', JSON.stringify(feedbackList)); }
+
+    // --- 界面切换 ---
+    function switchTab(tabName) {
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+
+        document.getElementById('subview-library').style.display = 'none';
+        document.getElementById('subview-feedback').style.display = 'none';
+        document.getElementById(`subview-${tabName}`).style.display = 'block';
     }
 
-    // --- 1. 云端逻辑 (新增) ---
-    async function fetchOnlineLibrary() {
-        const listEl = document.getElementById('online-list');
-        const sectionEl = document.getElementById('section-online');
-        const loadingEl = document.getElementById('online-loading');
-        
-        try {
-            // 获取索引文件
-            const res = await fetch(REPO_INDEX_URL + '?t=' + Date.now()); // 加时间戳防缓存
-            if (!res.ok) throw new Error("404");
-            
-            onlineLibrary = await res.json();
-            
-            sectionEl.style.display = 'block';
-            listEl.innerHTML = ''; // 清空 loading
+    function switchView(viewName) {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active-view'));
+        document.getElementById(`view-${viewName}`).classList.add('active-view');
+        if (viewName === 'home') document.getElementById('stats-bar').style.display = 'none';
+    }
 
+    // --- 反馈逻辑 (核心) ---
+    function openReportModal(index) {
+        currentEditIndex = index;
+        const q = currentExamData[index];
+        const preview = q.question.substring(0, 50) + (q.question.length > 50 ? '...' : '');
+        
+        document.getElementById('report-q-preview').innerText = preview;
+        document.getElementById('report-content').value = ''; 
+        document.getElementById('modal-report').style.display = 'flex';
+    }
+
+    function createReportObj() {
+        const content = document.getElementById('report-content').value.trim();
+        if(!content) { alert("请填写内容"); return null; }
+        
+        const examTitle = document.getElementById('quiz-title').innerText;
+        const q = currentExamData[currentEditIndex];
+
+        return {
+            id: Date.now(),
+            examTitle: examTitle,
+            qIndex: currentEditIndex + 1,
+            qText: q.question,
+            content: content,
+            time: new Date().toLocaleString()
+        };
+    }
+
+    function saveReport() {
+        const report = createReportObj();
+        if(!report) return;
+
+        feedbackList.unshift(report);
+        saveFeedback();
+        renderFeedbackList();
+        
+        closeModal('modal-report');
+        alert("已保存到【意见/纠错记录】栏！");
+    }
+
+    function saveAndMailReport() {
+        const report = createReportObj();
+        if(!report) return;
+
+        // 1. 保存到本地
+        feedbackList.unshift(report);
+        saveFeedback();
+        renderFeedbackList();
+        closeModal('modal-report');
+
+        // 2. 唤起邮件
+        const subject = `题库纠错反馈：${report.examTitle}`;
+        const body = `管理员你好，\n\n我在做《${report.examTitle}》第 ${report.qIndex} 题时发现问题。\n\n【题目片段】：\n${report.qText.substring(0,60)}...\n\n【我的意见】：\n${report.content}\n\n时间：${report.time}`;
+        
+        window.location.href = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    }
+
+    function renderFeedbackList() {
+        const el = document.getElementById('feedback-list');
+        el.innerHTML = '';
+        
+        if (feedbackList.length === 0) {
+            document.getElementById('feedback-empty').style.display = 'block';
+            return;
+        }
+        document.getElementById('feedback-empty').style.display = 'none';
+
+        feedbackList.forEach((item, idx) => {
+            const div = document.createElement('div');
+            div.className = 'exam-item';
+            div.innerHTML = `
+                <div class="exam-info-group">
+                    <div class="exam-title">
+                        ${item.examTitle} <span class="badge-feedback">#${item.qIndex}</span>
+                    </div>
+                    <div class="exam-sub" style="color:#e74c3c;">意见：${item.content}</div>
+                    <div class="exam-sub">${item.time}</div>
+                </div>
+                <div class="exam-actions">
+                    <button class="btn-icon" onclick="deleteFeedback(${idx})" title="删除">🗑</button>
+                </div>
+            `;
+            el.appendChild(div);
+        });
+    }
+
+    function deleteFeedback(idx) {
+        if(confirm("确定删除这条记录吗？")) {
+            feedbackList.splice(idx, 1);
+            saveFeedback();
+            renderFeedbackList();
+        }
+    }
+
+    // --- 下面是常规逻辑 (加载、做题、本地编辑) ---
+    async function fetchOnlineLibrary() {
+        try {
+            const res = await fetch(REPO_INDEX_URL + '?t=' + Date.now());
+            if (!res.ok) throw new Error("404");
+            onlineLibrary = await res.json();
+            document.getElementById('section-online').style.display = 'block';
+            const listEl = document.getElementById('online-list');
+            listEl.innerHTML = ''; 
             onlineLibrary.forEach((exam, idx) => {
                 const item = document.createElement('div');
                 item.className = 'exam-item';
                 item.innerHTML = `
                     <div class="exam-info-group" onclick="startOnlineExam(${idx})">
-                        <div class="exam-title">
-                            ${exam.title} <span class="badge-online">Online</span>
-                        </div>
+                        <div class="exam-title">${exam.title} <span class="badge-online">Online</span></div>
                         <div class="exam-sub">${exam.desc || '云端题库'}</div>
                     </div>
                     <div class="exam-actions">
                         <button class="btn-icon" title="下载到本地" onclick="downloadOnlineExam(${idx})">📥</button>
                         <button class="btn-import" style="padding: 6px 12px; font-size: 0.85rem;" onclick="startOnlineExam(${idx})">开始</button>
-                    </div>
-                `;
+                    </div>`;
                 listEl.appendChild(item);
             });
-
-        } catch (e) {
-            console.log("未检测到云端配置，或加载失败", e);
-            // 如果加载失败，隐藏云端区域，只显示本地
-            sectionEl.style.display = 'none';
-        }
+        } catch (e) { document.getElementById('section-online').style.display = 'none'; }
     }
 
     async function startOnlineExam(idx) {
         const examInfo = onlineLibrary[idx];
-        if(!examInfo) return;
-
         switchView('quiz');
         document.getElementById('quiz-title').innerText = examInfo.title;
         document.getElementById('quiz-container').innerHTML = '';
         document.getElementById('quiz-loading').style.display = 'block';
-
         try {
             const res = await fetch(examInfo.file);
-            if(!res.ok) throw new Error("File not found");
             const questions = await res.json();
-            
             currentExamData = questions;
             currentExamType = 'online';
-            currentExamId = null; // 在线题库没有本地ID
-            
+            currentExamId = null;
             document.getElementById('quiz-loading').style.display = 'none';
             stats = { done: 0, correct: 0 };
             renderQuizList(questions);
             document.getElementById('stats-bar').style.display = 'block';
             updateStats(questions.length);
-        } catch(e) {
-            alert('题库文件加载失败：' + e.message);
-            switchView('library');
-        }
+        } catch(e) { alert('加载失败'); switchView('home'); }
     }
 
     async function downloadOnlineExam(idx) {
-        const examInfo = onlineLibrary[idx];
-        if(!confirm(`要把《${examInfo.title}》保存到本地吗？`)) return;
-
-        try {
-            const res = await fetch(examInfo.file);
-            const questions = await res.json();
-            
-            const newExam = {
-                id: Date.now(),
-                title: examInfo.title,
-                questions: questions
-            };
-            localLibrary.unshift(newExam);
-            saveLocalLibrary();
-            renderLocalLibrary();
-            alert('下载成功！已添加到本地列表。');
-        } catch(e) {
-            alert('下载失败');
-        }
+        const info = onlineLibrary[idx];
+        if(!confirm(`保存《${info.title}》到本地？`)) return;
+        const res = await fetch(info.file);
+        const data = await res.json();
+        const newExam = { id: Date.now(), title: info.title, questions: data };
+        localLibrary.unshift(newExam);
+        saveLocalLibrary();
+        renderLocalLibrary();
+        alert("已下载");
     }
 
-    // --- 2. 本地逻辑 ---
     function renderLocalLibrary() {
         const listEl = document.getElementById('library-list');
         listEl.innerHTML = '';
-        
-        if (localLibrary.length === 0) {
-            document.getElementById('empty-tip').style.display = 'block';
-        } else {
-            document.getElementById('empty-tip').style.display = 'none';
-        }
-
+        document.getElementById('empty-tip').style.display = localLibrary.length === 0 ? 'block' : 'none';
         localLibrary.forEach(exam => {
             const item = document.createElement('div');
             item.className = 'exam-item';
@@ -385,20 +498,14 @@
                     <button class="btn-icon" onclick="openRenameModal(${exam.id})" title="重命名">✎</button>
                     <button class="btn-icon" style="color:#e74c3c;" onclick="deleteExam(${exam.id})" title="删除">🗑</button>
                     <button class="btn-import" style="padding: 6px 12px; font-size: 0.85rem;" onclick="openLocalExam(${exam.id})">开始</button>
-                </div>
-            `;
+                </div>`;
             listEl.appendChild(item);
         });
     }
 
     function openLocalExam(id) {
         const exam = localLibrary.find(e => e.id === id);
-        if (!exam) return;
-        
-        currentExamId = id;
-        currentExamData = exam.questions;
-        currentExamType = 'local';
-
+        currentExamId = id; currentExamData = exam.questions; currentExamType = 'local';
         document.getElementById('quiz-title').innerText = exam.title;
         stats = { done: 0, correct: 0 };
         renderQuizList(exam.questions);
@@ -408,10 +515,9 @@
     }
 
     function deleteExam(id) {
-        if (confirm('确定要删除这份本地题库吗？')) {
+        if (confirm('删除此本地试卷？')) {
             localLibrary = localLibrary.filter(e => e.id !== id);
-            saveLocalLibrary();
-            renderLocalLibrary();
+            saveLocalLibrary(); renderLocalLibrary();
         }
     }
 
@@ -423,50 +529,45 @@
             try {
                 const data = JSON.parse(e.target.result);
                 if (Array.isArray(data)) {
-                    const newExam = {
-                        id: Date.now(),
-                        title: file.name.replace('.json', ''),
-                        questions: data
-                    };
-                    localLibrary.unshift(newExam);
-                    saveLocalLibrary();
-                    renderLocalLibrary();
-                    alert(`导入成功！包含 ${data.length} 道题`);
-                } else { alert('文件格式错误：必须是 JSON 数组'); }
-            } catch (err) { alert('解析失败'); }
+                    localLibrary.unshift({ id: Date.now(), title: file.name.replace('.json', ''), questions: data });
+                    saveLocalLibrary(); renderLocalLibrary();
+                    alert(`导入成功！`);
+                }
+            } catch (err) { alert('格式错误'); }
         };
         reader.readAsText(file);
         input.value = '';
     }
 
-    // --- 3. 视图与通用功能 ---
-    function switchView(viewName) {
-        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active-view'));
-        document.getElementById(`view-${viewName}`).classList.add('active-view');
-        
-        if (viewName === 'library') {
-            document.getElementById('stats-bar').style.display = 'none';
-        }
-    }
-
+    // --- 渲染题目卡片 ---
     function renderQuizList(questions) {
         const container = document.getElementById('quiz-container');
         container.innerHTML = '';
-        document.getElementById('quiz-loading').style.display = 'none';
-
         questions.forEach((q, index) => {
             const card = document.createElement('div');
             card.className = 'card';
             card.id = `q-${index}`;
 
-            // 只有本地题库才显示编辑按钮
-            if (currentExamType === 'local') {
+            // 按钮组：纠错 + 编辑(仅本地)
+            const actions = document.createElement('div');
+            actions.className = 'card-actions';
+            
+            // 纠错按钮 (所有题目都有)
+            const reportBtn = document.createElement('button');
+            reportBtn.className = 'action-btn btn-report';
+            reportBtn.innerHTML = '📢 纠错';
+            reportBtn.onclick = () => openReportModal(index);
+            actions.appendChild(reportBtn);
+
+            // 编辑按钮 (仅本地题目显示，避免混淆)
+            if(currentExamType === 'local') {
                 const editBtn = document.createElement('button');
-                editBtn.className = 'edit-btn';
-                editBtn.innerHTML = '✏️';
+                editBtn.className = 'action-btn';
+                editBtn.innerHTML = '✏️ 编辑';
                 editBtn.onclick = () => openEditModal(index);
-                card.appendChild(editBtn);
+                actions.appendChild(editBtn);
             }
+            card.appendChild(actions);
 
             const meta = document.createElement('div');
             meta.className = 'q-meta';
@@ -493,10 +594,7 @@
                 const input = document.createElement('input');
                 input.className = 'blank-input';
                 input.placeholder = '输入答案，回车提交';
-                input.autocomplete = 'off';
-                input.onkeydown = (e) => {
-                    if (e.key === 'Enter') handleBlank(index, input, q.answer, q.note);
-                };
+                input.onkeydown = (e) => { if (e.key === 'Enter') handleBlank(index, input, q.answer, q.note); };
                 card.appendChild(input);
             }
 
@@ -508,127 +606,73 @@
         });
     }
 
-    // 判题逻辑
     function handleChoice(qIndex, optIndex, element, correctIndex, note) {
         const card = document.getElementById(`q-${qIndex}`);
         if (card.getAttribute('data-done')) return;
         card.setAttribute('data-done', 'true');
         stats.done++;
-        
         const allOpts = card.querySelectorAll('.opt-item');
         allOpts.forEach(el => el.classList.add('disabled')); 
-
-        if (optIndex == correctIndex) {
-            element.classList.add('correct-bg');
-            stats.correct++;
-        } else {
-            element.classList.add('wrong-bg');
-            if (allOpts[correctIndex]) allOpts[correctIndex].classList.add('correct-bg');
-        }
+        if (optIndex == correctIndex) { element.classList.add('correct-bg'); stats.correct++; } 
+        else { element.classList.add('wrong-bg'); if (allOpts[correctIndex]) allOpts[correctIndex].classList.add('correct-bg'); }
         showAnalysis(qIndex, note, optIndex != correctIndex);
         updateStats();
     }
-
     function handleBlank(qIndex, inputElement, correctText, note) {
         const card = document.getElementById(`q-${qIndex}`);
         if (card.getAttribute('data-done')) return;
         const val = inputElement.value.trim();
         if (!val) return; 
-
-        card.setAttribute('data-done', 'true');
-        stats.done++;
-        inputElement.disabled = true;
-
-        if (val === correctText) {
-            inputElement.classList.add('correct-bg');
-            stats.correct++;
-            showAnalysis(qIndex, note, false); 
-        } else {
-            inputElement.classList.add('wrong-bg');
-            showAnalysis(qIndex, `参考答案：${correctText}。 ` + (note || ""), true);
-        }
+        card.setAttribute('data-done', 'true'); stats.done++; inputElement.disabled = true;
+        if (val === correctText) { inputElement.classList.add('correct-bg'); stats.correct++; showAnalysis(qIndex, note, false); } 
+        else { inputElement.classList.add('wrong-bg'); showAnalysis(qIndex, `参考答案：${correctText}。 ` + (note || ""), true); }
         updateStats();
     }
-
     function showAnalysis(qIndex, text, isWrong) {
         const box = document.getElementById(`analysis-${qIndex}`);
-        if (text || isWrong) {
-            box.style.display = 'block';
-            box.innerHTML = `<strong>${isWrong ? '❌ 错题解析' : '✅ 答案解析'}：</strong><br>${text || '暂无详细解析'}`;
-        }
+        if (text || isWrong) { box.style.display = 'block'; box.innerHTML = `<strong>${isWrong ? '❌ 错题解析' : '✅ 答案解析'}：</strong><br>${text || '暂无详细解析'}`; }
     }
-
     function updateStats(total) {
         const t = total || document.querySelectorAll('.card').length;
         document.getElementById('done-count').innerText = stats.done;
         document.getElementById('total-count').innerText = t;
     }
 
-    // --- 弹窗与编辑 ---
+    // --- 本地编辑与重命名逻辑 ---
     let tempRenameId = null;
     function openRenameModal(id) {
-        tempRenameId = id;
-        const exam = localLibrary.find(e => e.id === id);
+        tempRenameId = id; const exam = localLibrary.find(e => e.id === id);
         document.getElementById('rename-input').value = exam.title;
         document.getElementById('modal-rename').style.display = 'flex';
     }
-
     function confirmRename() {
         const val = document.getElementById('rename-input').value.trim();
-        if (val) {
-            const exam = localLibrary.find(e => e.id === tempRenameId);
-            exam.title = val;
-            saveLocalLibrary();
-            renderLocalLibrary();
-        }
+        if (val) { const exam = localLibrary.find(e => e.id === tempRenameId); exam.title = val; saveLocalLibrary(); renderLocalLibrary(); }
         closeModal('modal-rename');
     }
-
     function openEditModal(index) {
-        if(currentExamType !== 'local') return; // 在线题库不可直接编辑
-        currentEditIndex = index;
-        const exam = localLibrary.find(e => e.id === currentExamId);
-        const q = exam.questions[index];
-
+        currentEditIndex = index; const q = currentExamData[index];
         document.getElementById('edit-q-text').value = q.question;
         document.getElementById('edit-q-note').value = q.note || '';
         document.getElementById('edit-q-answer').value = q.answer;
-
         const optGroup = document.getElementById('edit-options-group');
-        if (q.type === 'choice') {
-            optGroup.style.display = 'block';
-            document.getElementById('edit-q-options').value = q.options.join('\n');
-        } else {
-            optGroup.style.display = 'none';
-        }
+        if (q.type === 'choice') { optGroup.style.display = 'block'; document.getElementById('edit-q-options').value = q.options.join('\n'); } 
+        else { optGroup.style.display = 'none'; }
         document.getElementById('modal-edit').style.display = 'flex';
     }
-
     function saveQuestionEdit() {
-        const exam = localLibrary.find(e => e.id === currentExamId);
-        const q = exam.questions[currentEditIndex];
-        q.question = document.getElementById('edit-q-text').value;
-        q.note = document.getElementById('edit-q-note').value;
+        const exam = localLibrary.find(e => e.id === currentExamId); const q = exam.questions[currentEditIndex];
+        q.question = document.getElementById('edit-q-text').value; q.note = document.getElementById('edit-q-note').value;
         const ans = document.getElementById('edit-q-answer').value;
-        if (q.type === 'choice') {
-            q.answer = parseInt(ans);
-            const opts = document.getElementById('edit-q-options').value.split('\n');
-            q.options = opts.filter(o => o.trim() !== '');
-        } else { q.answer = ans; }
-        saveLocalLibrary();
-        renderQuizList(exam.questions); 
-        setTimeout(() => {
-            const el = document.getElementById(`q-${currentEditIndex}`);
-            if(el) el.scrollIntoView({behavior: 'auto', block: 'center'});
-        }, 50);
+        if (q.type === 'choice') { q.answer = parseInt(ans); const opts = document.getElementById('edit-q-options').value.split('\n'); q.options = opts.filter(o => o.trim() !== ''); } 
+        else { q.answer = ans; }
+        saveLocalLibrary(); renderQuizList(exam.questions); 
+        setTimeout(() => { const el = document.getElementById(`q-${currentEditIndex}`); if(el) el.scrollIntoView({behavior: 'auto', block: 'center'}); }, 50);
         closeModal('modal-edit');
     }
-
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
     window.onclick = e => { if(e.target.classList.contains('modal-overlay')) e.target.style.display = 'none'; }
 </script>
 
 </body>
 </html>
-
-
