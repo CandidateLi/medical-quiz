@@ -79,7 +79,7 @@
 
         /* --- 3. 做题页面 --- */
         .view-section { display: none; }
-        .active-view { display: block; animation: fadeIn 0.3s; }
+        .active-view { display: block; animation: fadeIn 0.2s; } /* 加快了动画速度 */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         .quiz-header {
@@ -162,13 +162,8 @@
         .menu-label { font-size: 1rem; font-weight: 600; color: #333; margin-bottom: 2px; }
         .menu-count { font-size: 0.85rem; color: #888; }
 
-        /* 智能组卷列表 */
-        .smart-select-list {
-            max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-bottom: 15px;
-        }
-        .smart-header {
-            font-size: 0.8rem; font-weight: 700; color: #999; margin: 10px 0 5px 0; border-bottom: 1px solid #eee; padding-bottom: 2px;
-        }
+        .smart-select-list { max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+        .smart-header { font-size: 0.8rem; font-weight: 700; color: #999; margin: 10px 0 5px 0; border-bottom: 1px solid #eee; padding-bottom: 2px; }
         .smart-item { display: flex; align-items: center; padding: 5px 0; font-size: 0.9rem; }
         .smart-item input { margin-right: 8px; transform: scale(1.2); }
         .smart-online-badge { background: #e3f2fd; color: #2196f3; font-size: 0.7rem; padding: 1px 4px; border-radius: 3px; margin-left: 5px; }
@@ -186,7 +181,7 @@
     <!-- 视图1：首页 -->
     <div id="view-home" class="view-section active-view">
         <div class="header-bar">
-            <div class="app-title">📚 MedFlow-准备好挑战恶龙了吗！ </div>
+            <div class="app-title">📚 MedFlow-准备好挑战恶龙了吗！</div>
             <div class="btn-group">
                 <button class="btn-ghost" onclick="document.getElementById('fileInput').click()">+ 导入</button>
                 <button class="btn-main" onclick="openMenuModal()">🚀 开始练习</button>
@@ -202,7 +197,7 @@
         </div>
 
         <!-- 2. 我的书架 -->
-        <div class="section-label">📂 我的书架</div>
+        <div class="section-label">📂 我的书架 </div>
         <div id="library-list"></div>
         <div id="empty-tip" style="text-align:center; color:#999; margin-top:30px;">
             本地暂无试卷，请点击上方在线题库直接练习<br>或导入 JSON 文件
@@ -239,7 +234,7 @@
                 <span class="menu-icon">🧠</span>
                 <div class="menu-info">
                     <div class="menu-label">智能组卷</div>
-                    <div class="menu-count">支持全库抽取</div>
+                    <div class="menu-count">自定义抽取范围和题量</div>
                 </div>
                 <span style="color:#ccc;">›</span>
             </div>
@@ -269,16 +264,13 @@
 <div id="modal-smart-setup" class="modal-overlay" style="z-index:1100;">
     <div class="modal">
         <h3 style="margin-top:0;">⚙️ 智能组卷配置</h3>
-        
         <p style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">1. 选择题库来源：</p>
         <div class="smart-select-list" id="smart-bank-list"></div>
-
         <p style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">2. 抽取数量：</p>
         <div style="display:flex; gap:10px; margin-bottom:20px;">
             <input type="number" id="smart-q-count" value="20" style="width:80px; padding:5px; border:1px solid #ccc; border-radius:4px;">
             <span style="font-size:0.85rem; color:#888; line-height:30px;">(输入 0 或 all 为全部)</span>
         </div>
-
         <div style="text-align:right;">
             <button class="btn-ghost" onclick="document.getElementById('modal-smart-setup').style.display='none'">取消</button>
             <button id="btn-smart-start" class="btn-main" onclick="confirmSmartExam()">开始生成</button>
@@ -290,10 +282,17 @@
 <div id="modal-report" class="modal-overlay" style="z-index:1200;">
     <div class="modal">
         <h3 style="margin-top:0;">📢 提交纠错</h3>
-        <textarea id="report-text" style="width:100%; height:100px; border:1px solid #ddd; padding:10px; border-radius:8px; margin:10px 0; font-family:inherit; box-sizing: border-box;" placeholder="请描述错误内容..."></textarea>
-        <div style="text-align:right;">
+        <p style="font-size:0.85rem; color:#999; margin-bottom: 10px;">
+            您的反馈将帮助我们完善题库。
+        </p>
+        <textarea id="report-text" style="width:100%; height:100px; border:1px solid #ddd; padding:10px; border-radius:8px; margin:0 0 15px 0; font-family:inherit; box-sizing: border-box;" placeholder="请描述错误内容，例如：答案选C，因为..."></textarea>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
             <button class="btn-ghost" onclick="document.getElementById('modal-report').style.display='none'">取消</button>
+            <!-- 原来的保存按钮 -->
             <button class="btn-main" onclick="submitReport()">保存记录</button>
+            <!-- 新增：发送邮件按钮 (绿色) -->
+            <button class="btn-main" style="background-color: #27ae60;" onclick="sendEmailReport()">📧 发送给作者</button>
         </div>
     </div>
 </div>
@@ -305,9 +304,7 @@
     let favorites = JSON.parse(localStorage.getItem('pro_fav') || '[]');
     let feedback = JSON.parse(localStorage.getItem('pro_feed') || '[]');
     
-    // 全局变量存储在线列表数据
     let onlineListData = [];
-
     let currentQs = [];
     let isHighlightMode = false;
     let currentReportIdx = null;
@@ -319,6 +316,41 @@
         fetchOnline();
     };
 
+// --- 新增：发送邮件功能 ---
+    function sendEmailReport() {
+        const txt = document.getElementById('report-text').value;
+        if (!txt) return alert('请先填写反馈内容哦！');
+
+        // 获取当前题目信息（去掉HTML标签，防止乱码）
+        const qData = currentQs[currentReportIdx];
+        const qTextClean = qData.question.replace(/<[^>]+>/g, "").substring(0, 60); 
+        const qSource = qData._source || "未知来源";
+
+        // 配置邮件信息
+        const email = "3182568199@qq.com";
+        const subject = `【临床题库纠错】来自用户的反馈`;
+        
+        // 构建邮件正文
+        const body = 
+`作者你好，我在练习时发现了问题：
+
+【题目来源】：${qSource}
+【题目片段】：${qTextClean}...
+----------------------------------
+【我的反馈/建议】：
+${txt}
+
+----------------------------------
+(发送自 临床题库 Pro)`;
+
+        // 唤起邮件客户端
+        window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        // 关闭弹窗
+        document.getElementById('modal-report').style.display = 'none';
+    }
+
+    
     function saveData() {
         localStorage.setItem('pro_lib', JSON.stringify(library));
         localStorage.setItem('pro_err', JSON.stringify(mistakes));
@@ -334,7 +366,6 @@
         }
     }
 
-    // --- 首页逻辑 ---
     function renderList() {
         const el = document.getElementById('library-list');
         el.innerHTML = '';
@@ -355,16 +386,16 @@
         });
     }
 
-    // --- 智能组卷 (全库贯通) ---
     function openSmartSetup() {
+        // 先关掉主菜单
+        document.getElementById('modal-menu').style.display = 'none';
+
+        if(library.length === 0 && onlineListData.length === 0) return alert('暂无任何题库数据！');
+        
         const listEl = document.getElementById('smart-bank-list');
         listEl.innerHTML = '';
         
-        let hasContent = false;
-
-        // 1. 本地题库
         if(library.length > 0) {
-            hasContent = true;
             listEl.innerHTML += `<div class="smart-header">📂 本地题库</div>`;
             library.forEach((lib, idx) => {
                 const div = document.createElement('div');
@@ -374,9 +405,7 @@
             });
         }
 
-        // 2. 在线题库
         if(onlineListData.length > 0) {
-            hasContent = true;
             listEl.innerHTML += `<div class="smart-header">☁️ 在线题库</div>`;
             onlineListData.forEach((lib, idx) => {
                 const div = document.createElement('div');
@@ -386,28 +415,22 @@
             });
         }
 
-        if(!hasContent) return alert('暂无任何题库数据 (本地或在线)');
-
-        document.getElementById('modal-menu').style.display = 'none';
         document.getElementById('modal-smart-setup').style.display = 'flex';
     }
 
     async function confirmSmartExam() {
         const btn = document.getElementById('btn-smart-start');
         btn.disabled = true;
-        btn.innerText = '正在提取题目...';
+        btn.innerText = '正在提取...';
 
         try {
             let pool = [];
-
-            // 1. 收集本地
             const localCbs = document.querySelectorAll('input[name="local-lib"]:checked');
             localCbs.forEach(cb => {
                 const lib = library[parseInt(cb.value)];
                 pool = pool.concat(lib.questions.map(q => ({...q, _source: lib.title})));
             });
 
-            // 2. 收集在线 (需要临时下载)
             const onlineCbs = document.querySelectorAll('input[name="online-lib"]:checked');
             if(onlineCbs.length > 0) {
                 const fetchPromises = Array.from(onlineCbs).map(async cb => {
@@ -417,7 +440,7 @@
                         const res = await fetch(item.file);
                         const qs = await res.json();
                         return qs.map(q => ({...q, _source: item.title + ' (Online)'}));
-                    } catch(e) { console.error('Failed to load online lib', e); return []; }
+                    } catch(e) { return []; }
                 });
                 const onlineResults = await Promise.all(fetchPromises);
                 onlineResults.forEach(qs => pool = pool.concat(qs));
@@ -425,13 +448,11 @@
 
             if(pool.length === 0) throw new Error('未选中任何题目');
 
-            // 3. 截取数量
             let countInput = document.getElementById('smart-q-count').value;
             let count = parseInt(countInput);
             if(isNaN(count) || countInput.toLowerCase() === 'all' || count <= 0) count = pool.length;
             if(count > pool.length) count = pool.length;
 
-            // 4. 洗牌
             pool.sort(() => Math.random() - 0.5);
             const finalQs = pool.slice(0, count);
 
@@ -446,12 +467,25 @@
         }
     }
 
+    // --- 特殊模式入口 (极速版优化) ---
+    function startSpecialExam(type) {
+        // 1. 立即关闭菜单，防止视觉悬停
+        document.getElementById('modal-menu').style.display = 'none';
+
+        // 2. 检查数据
+        const qs = (type === 'mistakes') ? mistakes : favorites;
+        if(!qs.length) return alert('这里空空如也！先去做点题吧。');
+        
+        // 3. 启动
+        startQuiz(type === 'mistakes' ? '📕 错题本' : '⭐ 收藏夹', qs, type);
+    }
+
     // --- 做题核心 ---
-    function startQuiz(title, questions) {
-        currentMode = 'normal';
+    function startQuiz(title, questions, mode = 'normal') {
+        currentMode = mode;
         currentQs = JSON.parse(JSON.stringify(questions)); 
         document.getElementById('quiz-title').innerText = title;
-        document.getElementById('btn-clear-err').style.display = 'none';
+        document.getElementById('btn-clear-err').style.display = (mode === 'mistakes') ? 'block' : 'none';
         
         switchView('quiz');
         renderCards();
@@ -467,7 +501,6 @@
 
         currentQs.forEach((q, idx) => {
             const isFav = favorites.some(f => f.question === q.question);
-            
             const card = document.createElement('div');
             card.className = 'card';
             card.id = `q-${idx}`;
@@ -512,7 +545,7 @@
     }
 
     function removeMistakeOne(idx) {
-        if(!confirm('确定要将这道题移出错题本吗？')) return;
+        if(!confirm('确定移出错题本？')) return;
         const targetQ = currentQs[idx];
         mistakes = mistakes.filter(m => m.question !== targetQ.question);
         saveData();
@@ -522,19 +555,8 @@
     }
 
     function clearAllMistakes() {
-        if(!confirm('⚠️ 警告：确定要清空所有错题吗？')) return;
-        mistakes = []; saveData(); alert('错题本已清空'); switchView('home');
-    }
-
-    function startSpecialExam(type) {
-        const qs = (type === 'mistakes') ? mistakes : favorites;
-        if(!qs.length) return alert('空空如也！先去做点题吧。');
-        startQuiz(type === 'mistakes' ? '📕 错题本' : '⭐ 收藏夹', qs);
-        if (type === 'mistakes') {
-            currentMode = 'mistakes';
-            document.getElementById('btn-clear-err').style.display = 'block';
-            renderCards(); // Re-render for delete buttons
-        }
+        if(!confirm('确定清空所有错题吗？')) return;
+        mistakes = []; saveData(); alert('已清空'); switchView('home');
     }
 
     function checkAnswer(qIdx, optIdx, el, correct, note) {
@@ -587,7 +609,6 @@
         document.getElementById('total-count').innerText = total;
     }
 
-    // --- 功能区 ---
     function toggleHighlightMode() {
         isHighlightMode = !isHighlightMode;
         document.getElementById('hl-btn').classList.toggle('active');
@@ -663,7 +684,6 @@
         }
     }
 
-    // --- 导航与辅助 ---
     function openMenuModal() { updateCounts(); document.getElementById('modal-menu').style.display = 'flex'; }
     function closeModal(e) { if(e.target.classList.contains('modal-overlay')) e.target.style.display = 'none'; }
     function switchView(v) {
