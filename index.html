@@ -73,7 +73,7 @@
         .del-btn { color: #e74c3c; padding: 5px 10px; border-radius: 4px; font-size: 0.9rem; }
         .del-btn:hover { background: #fee; }
 
-        /* 在线题库样式 (去掉了按钮) */
+        /* 在线题库样式 */
         .online-tag { background: #e3f2fd; color: #2196f3; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
         .online-arrow { color: #ccc; font-size: 1.2rem; }
 
@@ -90,7 +90,6 @@
         }
         .btn-back { background: transparent; border: 1px solid var(--primary); color: var(--primary); padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.9rem;}
         
-        /* 错题本专用清空按钮 */
         .btn-clear-err {
             font-size: 0.8rem; color: #e74c3c; background: #fff0f0; border: 1px solid #ffcccc;
             padding: 4px 10px; border-radius: 4px; cursor: pointer; display: none; margin-left: 10px;
@@ -163,12 +162,16 @@
         .menu-label { font-size: 1rem; font-weight: 600; color: #333; margin-bottom: 2px; }
         .menu-count { font-size: 0.85rem; color: #888; }
 
-        /* 智能组卷的复选列表 */
+        /* 智能组卷列表 */
         .smart-select-list {
-            max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-bottom: 15px;
+            max-height: 250px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px; margin-bottom: 15px;
+        }
+        .smart-header {
+            font-size: 0.8rem; font-weight: 700; color: #999; margin: 10px 0 5px 0; border-bottom: 1px solid #eee; padding-bottom: 2px;
         }
         .smart-item { display: flex; align-items: center; padding: 5px 0; font-size: 0.9rem; }
         .smart-item input { margin-right: 8px; transform: scale(1.2); }
+        .smart-online-badge { background: #e3f2fd; color: #2196f3; font-size: 0.7rem; padding: 1px 4px; border-radius: 3px; margin-left: 5px; }
 
         .hl-mark { background: var(--hl-color); cursor: pointer; border-radius: 2px; }
         .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle;}
@@ -191,15 +194,15 @@
             <input type="file" id="fileInput" accept=".json" onchange="importFile(this)">
         </div>
 
-        <!-- 1. 题库在线 (最上方) -->
+        <!-- 1. 题库在线 -->
         <div class="section-label" id="online-label" style="display:none;">☁️ 题库在线</div>
         <div id="online-list"></div>
         <div id="online-loading" style="text-align:center; color:#999; margin: 20px 0; display:none;">
             <div class="spinner"></div> 加载中...
         </div>
 
-        <!-- 2. 我的题库 (下方) -->
-        <div class="section-label">📂 我的书架 </div>
+        <!-- 2. 我的书架 -->
+        <div class="section-label">📂 我的书架</div>
         <div id="library-list"></div>
         <div id="empty-tip" style="text-align:center; color:#999; margin-top:30px;">
             本地暂无试卷，请点击上方在线题库直接练习<br>或导入 JSON 文件
@@ -213,9 +216,7 @@
                 <button class="btn-back" onclick="switchView('home')">⬅ 结束</button>
                 <button id="btn-clear-err" class="btn-clear-err" onclick="clearAllMistakes()">🗑 清空错题</button>
             </div>
-            
             <h1 id="quiz-title" style="font-size: 1rem; margin:0 10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; text-align:center;"></h1>
-            
             <div style="font-size:0.9rem; font-weight:600; color:var(--primary); min-width: 50px; text-align:right;">
                 <span id="done-count">0</span> / <span id="total-count">0</span>
             </div>
@@ -238,7 +239,7 @@
                 <span class="menu-icon">🧠</span>
                 <div class="menu-info">
                     <div class="menu-label">智能组卷</div>
-                    <div class="menu-count">自定义抽取范围和题量</div>
+                    <div class="menu-count">支持全库抽取</div>
                 </div>
                 <span style="color:#ccc;">›</span>
             </div>
@@ -270,9 +271,7 @@
         <h3 style="margin-top:0;">⚙️ 智能组卷配置</h3>
         
         <p style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">1. 选择题库来源：</p>
-        <div class="smart-select-list" id="smart-bank-list">
-            <!-- 动态生成复选框 -->
-        </div>
+        <div class="smart-select-list" id="smart-bank-list"></div>
 
         <p style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">2. 抽取数量：</p>
         <div style="display:flex; gap:10px; margin-bottom:20px;">
@@ -282,7 +281,7 @@
 
         <div style="text-align:right;">
             <button class="btn-ghost" onclick="document.getElementById('modal-smart-setup').style.display='none'">取消</button>
-            <button class="btn-main" onclick="confirmSmartExam()">开始生成</button>
+            <button id="btn-smart-start" class="btn-main" onclick="confirmSmartExam()">开始生成</button>
         </div>
     </div>
 </div>
@@ -305,11 +304,14 @@
     let mistakes = JSON.parse(localStorage.getItem('pro_err') || '[]');
     let favorites = JSON.parse(localStorage.getItem('pro_fav') || '[]');
     let feedback = JSON.parse(localStorage.getItem('pro_feed') || '[]');
+    
+    // 全局变量存储在线列表数据
+    let onlineListData = [];
 
     let currentQs = [];
     let isHighlightMode = false;
     let currentReportIdx = null;
-    let currentMode = 'normal'; // 'normal', 'mistakes', 'favorites'
+    let currentMode = 'normal';
 
     window.onload = () => {
         renderList();
@@ -353,59 +355,103 @@
         });
     }
 
-    // --- 智能组卷新逻辑 ---
+    // --- 智能组卷 (全库贯通) ---
     function openSmartSetup() {
-        if(library.length === 0) return alert('请先导入题库！');
-        
         const listEl = document.getElementById('smart-bank-list');
         listEl.innerHTML = '';
         
-        // 生成题库勾选列表
-        library.forEach((lib, idx) => {
-            const div = document.createElement('div');
-            div.className = 'smart-item';
-            div.innerHTML = `<label><input type="checkbox" value="${idx}" checked> ${lib.title} (${lib.questions.length}题)</label>`;
-            listEl.appendChild(div);
-        });
+        let hasContent = false;
+
+        // 1. 本地题库
+        if(library.length > 0) {
+            hasContent = true;
+            listEl.innerHTML += `<div class="smart-header">📂 本地题库</div>`;
+            library.forEach((lib, idx) => {
+                const div = document.createElement('div');
+                div.className = 'smart-item';
+                div.innerHTML = `<label><input type="checkbox" name="local-lib" value="${idx}" checked> ${lib.title} (${lib.questions.length}题)</label>`;
+                listEl.appendChild(div);
+            });
+        }
+
+        // 2. 在线题库
+        if(onlineListData.length > 0) {
+            hasContent = true;
+            listEl.innerHTML += `<div class="smart-header">☁️ 在线题库</div>`;
+            onlineListData.forEach((lib, idx) => {
+                const div = document.createElement('div');
+                div.className = 'smart-item';
+                div.innerHTML = `<label><input type="checkbox" name="online-lib" value="${idx}"> ${lib.title} <span class="smart-online-badge">Online</span></label>`;
+                listEl.appendChild(div);
+            });
+        }
+
+        if(!hasContent) return alert('暂无任何题库数据 (本地或在线)');
 
         document.getElementById('modal-menu').style.display = 'none';
         document.getElementById('modal-smart-setup').style.display = 'flex';
     }
 
-    function confirmSmartExam() {
-        // 1. 获取勾选的题库
-        const checkboxes = document.querySelectorAll('#smart-bank-list input:checked');
-        if(checkboxes.length === 0) return alert('请至少选择一个题库');
-        
-        let pool = [];
-        checkboxes.forEach(cb => {
-            const libIdx = parseInt(cb.value);
-            const lib = library[libIdx];
-            // 标记来源
-            const labeledQs = lib.questions.map(q => ({ ...q, _source: lib.title }));
-            pool = pool.concat(labeledQs);
-        });
+    async function confirmSmartExam() {
+        const btn = document.getElementById('btn-smart-start');
+        btn.disabled = true;
+        btn.innerText = '正在提取题目...';
 
-        // 2. 获取数量
-        let countInput = document.getElementById('smart-q-count').value;
-        let count = parseInt(countInput);
-        if(isNaN(count) || countInput.toLowerCase() === 'all' || count <= 0) count = pool.length;
-        if(count > pool.length) count = pool.length;
+        try {
+            let pool = [];
 
-        // 3. 生成
-        pool.sort(() => Math.random() - 0.5);
-        const finalQs = pool.slice(0, count);
+            // 1. 收集本地
+            const localCbs = document.querySelectorAll('input[name="local-lib"]:checked');
+            localCbs.forEach(cb => {
+                const lib = library[parseInt(cb.value)];
+                pool = pool.concat(lib.questions.map(q => ({...q, _source: lib.title})));
+            });
 
-        document.getElementById('modal-smart-setup').style.display = 'none';
-        startQuiz(`🧠 智能练习 (随机${count}题)`, finalQs);
+            // 2. 收集在线 (需要临时下载)
+            const onlineCbs = document.querySelectorAll('input[name="online-lib"]:checked');
+            if(onlineCbs.length > 0) {
+                const fetchPromises = Array.from(onlineCbs).map(async cb => {
+                    const idx = parseInt(cb.value);
+                    const item = onlineListData[idx];
+                    try {
+                        const res = await fetch(item.file);
+                        const qs = await res.json();
+                        return qs.map(q => ({...q, _source: item.title + ' (Online)'}));
+                    } catch(e) { console.error('Failed to load online lib', e); return []; }
+                });
+                const onlineResults = await Promise.all(fetchPromises);
+                onlineResults.forEach(qs => pool = pool.concat(qs));
+            }
+
+            if(pool.length === 0) throw new Error('未选中任何题目');
+
+            // 3. 截取数量
+            let countInput = document.getElementById('smart-q-count').value;
+            let count = parseInt(countInput);
+            if(isNaN(count) || countInput.toLowerCase() === 'all' || count <= 0) count = pool.length;
+            if(count > pool.length) count = pool.length;
+
+            // 4. 洗牌
+            pool.sort(() => Math.random() - 0.5);
+            const finalQs = pool.slice(0, count);
+
+            document.getElementById('modal-smart-setup').style.display = 'none';
+            startQuiz(`🧠 智能练习 (随机${count}题)`, finalQs);
+
+        } catch(e) {
+            alert('生成失败: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = '开始生成';
+        }
     }
 
     // --- 做题核心 ---
     function startQuiz(title, questions) {
-        currentMode = 'normal'; // 默认为普通模式
+        currentMode = 'normal';
         currentQs = JSON.parse(JSON.stringify(questions)); 
         document.getElementById('quiz-title').innerText = title;
-        document.getElementById('btn-clear-err').style.display = 'none'; // 默认隐藏清空按钮
+        document.getElementById('btn-clear-err').style.display = 'none';
         
         switchView('quiz');
         renderCards();
@@ -426,7 +472,6 @@
             card.className = 'card';
             card.id = `q-${idx}`;
             
-            // 如果是错题本模式，添加删除按钮
             let deleteBtnHtml = '';
             if (currentMode === 'mistakes') {
                 deleteBtnHtml = `<button class="icon-action del-mistake" onclick="removeMistakeOne(${idx})" title="移出错题本">🗑️</button>`;
@@ -466,50 +511,32 @@
         });
     }
 
-    // --- 错题特有功能 ---
     function removeMistakeOne(idx) {
         if(!confirm('确定要将这道题移出错题本吗？')) return;
         const targetQ = currentQs[idx];
-        
-        // 从全局错题数组中删除
         mistakes = mistakes.filter(m => m.question !== targetQ.question);
         saveData();
-
-        // 移除界面元素
         const card = document.getElementById(`q-${idx}`);
         card.style.opacity = '0.5';
         card.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">已移出错题本</div>';
     }
 
     function clearAllMistakes() {
-        if(!confirm('⚠️ 警告：确定要清空所有错题吗？此操作不可恢复！')) return;
-        mistakes = [];
-        saveData();
-        alert('错题本已清空');
-        switchView('home');
+        if(!confirm('⚠️ 警告：确定要清空所有错题吗？')) return;
+        mistakes = []; saveData(); alert('错题本已清空'); switchView('home');
     }
 
     function startSpecialExam(type) {
         const qs = (type === 'mistakes') ? mistakes : favorites;
         if(!qs.length) return alert('空空如也！先去做点题吧。');
-        
         startQuiz(type === 'mistakes' ? '📕 错题本' : '⭐ 收藏夹', qs);
-        
-        // 设置特殊模式标记
         if (type === 'mistakes') {
             currentMode = 'mistakes';
             document.getElementById('btn-clear-err').style.display = 'block';
-        } else {
-            currentMode = 'favorites';
+            renderCards(); // Re-render for delete buttons
         }
-        
-        document.getElementById('modal-menu').style.display = 'none';
-        
-        // 重新渲染以显示删除按钮
-        renderCards();
     }
 
-    // --- 答题判断 ---
     function checkAnswer(qIdx, optIdx, el, correct, note) {
         const card = document.getElementById(`q-${qIdx}`);
         if(card.getAttribute('done')) return;
@@ -534,7 +561,6 @@
         if(card.getAttribute('done')) return;
         card.setAttribute('done', 'true');
         input.disabled = true;
-        
         if(input.value.trim() === correct) {
             input.classList.add('correct-bg');
             showNote(qIdx, note, false);
@@ -573,7 +599,6 @@
         if(!sel.rangeCount || sel.toString().length < 1) return;
         const range = sel.getRangeAt(0);
         if(!el.contains(range.commonAncestorContainer)) return;
-
         const span = document.createElement('span');
         span.className = 'hl-mark';
         span.textContent = sel.toString();
@@ -583,7 +608,6 @@
             span.parentNode.replaceChild(txt, span);
             saveHighlightChange(idx, el.innerHTML);
         };
-        
         range.deleteContents();
         range.insertNode(span);
         sel.removeAllRanges();
@@ -613,7 +637,6 @@
     }
 
     function recordMistake(q) {
-        // 防止重复收录
         if(!mistakes.some(m => m.question === q.question)) {
             mistakes.unshift(q);
             saveData();
@@ -673,14 +696,14 @@
             document.getElementById('online-loading').style.display = 'block';
             const res = await fetch(REPO_URL);
             if(!res.ok) throw new Error();
-            const data = await res.json();
+            onlineListData = await res.json();
             
             const el = document.getElementById('online-list');
             document.getElementById('online-label').style.display = 'block';
             document.getElementById('online-loading').style.display = 'none';
             el.innerHTML = '';
             
-            data.forEach(item => {
+            onlineListData.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'exam-item';
                 div.innerHTML = `
@@ -690,7 +713,6 @@
                     </div>
                     <div class="online-arrow">›</div>
                 `;
-                // 直接做题逻辑
                 div.onclick = async () => {
                     const originalText = div.innerHTML;
                     div.style.opacity = '0.7';
