@@ -2,7 +2,7 @@
   {
     "title": "23 口腔耳鼻喉",
     "desc": "",
-    "file": "data/23 口腔耳鼻喉.json"
+    "file": "data/23oral-ENT.json"
   },
   {
     "title": "22 大四上 内科",
@@ -10,3 +10,4 @@
     "file": "data/ENT.json"
   }
 ]
+
