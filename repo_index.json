@@ -5,7 +5,7 @@
     "file": "data/22 大四上 ENT.json"
   },
   {
-    "title": "23 口腔耳鼻喉",
+    "title": "23 口腔 耳鼻喉",
     "desc": "",
     "file": "data/23oral-ENT.json"
   },
@@ -15,5 +15,6 @@
     "file": "data/ENT.json"
   }
 ]
+
 
 
